@@ -79,9 +79,14 @@ new Vue({
                 alert("不能借書!庫存狀態為毀損或遺失。");
                 return; 
             }
+            if (item.status === "借出") {
+                alert("此書以借出，請聯絡管理員查詢");
+                return; 
+            }
+
             const formData = new FormData();
             formData.append('InventoryId', item.inventoryId);
-            formData.append('userId', '2'); 
+            formData.append('userId', '5'); 
 
             // 借閱紀錄新增
             axios.post('http://localhost:8080/BorrowingRecordInsert.controller', formData)
@@ -104,7 +109,7 @@ new Vue({
 
             if (item.status === "毀損" || item.status === "遺失") {
                 alert("無法還書，庫存狀態為毀損或遺失，請聯絡管理員。");
-                return; // 不执行后续的请求
+                return; 
             }
 
             if (item.status !== "借出") {
