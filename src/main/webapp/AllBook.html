@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>書庫3</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<!-- bootstrap CSS  -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
+integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous" />
+
+<!-- bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
+integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
+crossorigin="anonymous"></script>
+
+
+</head>
+<body>
+
+<div id="app">
+    <h1>庫存清單</h1>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>國際標準書號</th>
+                <th>書名</th>
+                <th>作者</th>
+                <th>書籍內容簡介</th>
+                <th>入庫日期</th>
+                <th>書籍狀態</th>
+                <th>庫存ID</th>
+                <th>操作</th> 
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="item in inventory">
+                <td>{{ item.bookBean.iSBN }}</td>
+                <td>{{ item.bookBean.name }}</td>
+                <td>{{ item.bookBean.author }}</td>
+                <td>{{ item.bookBean.introduction }}</td>
+                <td>{{ item.storeTime }}</td>
+                <td>{{ item.status }}</td>
+                <td>{{ item.inventoryId }}</td>
+                <td>
+                    <button class="btn btn-primary" @click="borrowBook(item)">借書</button>
+                    <button class="btn btn-primary" @click="returnBook(item)">還書</button>
+                </td> 
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        inventory: []
+    },
+    mounted() {
+        this.fetchInventory();
+    },
+    methods: {
+        fetchInventory() {
+            axios.get('http://localhost:8080/InventoryFindAll.controller')
+            .then(response => {
+                this.inventory = response.data;
+                console.log(this.inventory);
+            })
+            .catch(error => {
+                console.error('Error fetching inventory:', error);
+            });
+        },
+        // 借書
+        borrowBook(item) {
+            if (item.status === "毀損" || item.status === "遺失") {
+                alert("不能借書!庫存狀態為毀損或遺失。");
+                return; 
+            }
+            const formData = new FormData();
+            formData.append('InventoryId', item.inventoryId);
+            formData.append('userId', '2'); 
+
+            // 借閱紀錄新增
+            axios.post('http://localhost:8080/BorrowingRecordInsert.controller', formData)
+            .then(response => {
+                console.log('借書成功:', response.data);
+            // 修改庫存狀態 
+                return axios.put(`http://localhost:8080/inventory/${item.inventoryId}/status?status=借出`);
+            })
+            .then(response => {
+                console.log('更新庫存狀態成功:', response.data);
+            // 重新整理
+                this.fetchInventory();
+            })
+            .catch(error => {
+                console.error('借書失敗:', error);
+            });
+        },
+        // 還書
+        returnBook(item) {
+
+            if (item.status === "毀損" || item.status === "遺失") {
+                alert("無法還書，庫存狀態為毀損或遺失，請聯絡管理員。");
+                return; // 不执行后续的请求
+            }
+
+            if (item.status !== "借出") {
+                alert("此書已在庫存，無法還書，只能借書");
+                return; 
+            }
+            const formData = new FormData();
+            formData.append('InventoryId', item.inventoryId);
+            formData.append('userId', '5'); 
+
+            // 借閱紀錄新增
+            axios.post('http://localhost:8080/BorrowingRecordInsert.controller', formData)
+            .then(response => {
+                console.log('借書成功:', response.data);
+            // 修改庫存狀態(在庫) 
+                return axios.put(`http://localhost:8080/inventory/${item.inventoryId}/status?status=在庫`);
+            })
+            .then(response => {
+                console.log('更新庫存狀態成功:', response.data);
+            // 重新整理
+                this.fetchInventory();
+            })
+            .catch(error => {
+                console.error('借書失敗:', error);
+            });
+        }
+
+
+    }
+});
+</script>
+
+</body>
+</html>
